@@ -7,6 +7,8 @@ var axis = 0;
 var xAxis = 0;
 var yAxis =1;
 var zAxis = 2;
+
+var texture;
 function generateFace(ctx, faceColor, textColor, text) {
     const {width, height} = ctx.canvas;
     ctx.fillStyle = faceColor;
@@ -26,7 +28,7 @@ function init() {
     gl = canvas.getContext('webgl2');
     if (!gl) alert("WebGL 2.0 isn't available");
 
-    var verticies = [
+    var vertices = [
         vec3(0.5, 0.5, 0.5),
         vec3(0.5, -0.5, 0.5),
         vec3(-0.5, 0.5, 0.5),
@@ -65,7 +67,7 @@ function init() {
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, faceColor: '#00F' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, faceColor: '#F0F' },
     ];
-    const textureCoordinates = [
+    const texCoord = [
         // Front
         0.0,  0.0,
         1.0,  0.0,
@@ -109,17 +111,18 @@ function init() {
 
     var buffer1 = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer1);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(verticies), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW);
 
     // Initialize the vertex position attribute from the vertex shader
 
-    var positionLoc = gl.getAttribLocation(program1, "aPosition");
-    gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(positionLoc);
+    var positionLoc1 = gl.getAttribLocation(program1, "aPosition");
+    gl.vertexAttribPointer(positionLoc1, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(positionLoc1);
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT );
+    //gl.clear(gl.COLOR_BUFFER_BIT );
 
-    thetaLoc = gl.getUniformLocation(program1, "uTheta");
+    thetaLoc1 = gl.getUniformLocation(program1, "uTheta");
+    thetaLoc2 = gl.getUniformLocation(program2, "uTheta");
     document.getElementById( "xButton" ).onclick = function () {
         axis = xAxis;
     };
@@ -132,31 +135,64 @@ function init() {
     document.getElementById("ButtonT").onclick = function(){flag = !flag;};
 
    // Initialize a texture from local image 
- 
+   gl.useProgram(program2);
    var image = new Image(); 
-   image.src = "http://localhost:8003/SMU.png" 
+   image.src = "http://localhost:8003/Stone_Texture04.png" 
    image.crossOrigin = ""; 
    image.onload = function() { 
         texture = gl.createTexture(); 
-        gl.bindTexture(gl.TEXTURE_2D, texture); 
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image); 
-        gl.generateMipmap(gl.TEXTURE_2D); 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR); 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); 
-        gl.uniform1i(gl.getUniformLocation(program, "uTexMap"), 0); 
-   }    
-   
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+
+        gl.generateMipmap(gl.TEXTURE_CUBE_MAP); 
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR); 
+        //gl.texParameteri(gl.TEXTURE_CUBE_MAPv, gl.TEXTURE_MAG_FILTER, gl.NEAREST); 
+        gl.uniform1i(gl.getUniformLocation(program2, "uTexMap"), 0); 
+    }
+    gl.activeTexture(gl.TEXTURE0);
+
+    //gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+    var buffer2 = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, buffer2);
+    gl.bufferData(gl.ARRAY_BUFFER, new flatten(vertices), gl.STATIC_DRAW);
+
+    var positionLoc2 = gl.getAttribLocation( program2, "aPosition" );
+    gl.vertexAttribPointer( positionLoc2, 3, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( positionLoc2 );
+
+    var buffer3 = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, buffer3);
+    gl.bufferData( gl.ARRAY_BUFFER,   flatten(texCoord), gl.STATIC_DRAW);
+
+
+    var texCoordLoc = gl.getAttribLocation( program2, "aTexCoord");
+    gl.vertexAttribPointer( texCoordLoc, 2, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( texCoordLoc );
+
+    gl.uniform1i( gl.getUniformLocation(program2, "uTextureMap"), 0);
+
+    gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
+
+    gl.viewport(0, 0, 512, 512);
+
     render();
 }
 
 function render() {
+    gl.useProgram(program1);
     if(flag) theta[axis] += 0.5;
-    gl.uniform3fv(thetaLoc, theta);
-    console.log(theta);
-    console.log(axis);
+    gl.uniform3fv(thetaLoc1, theta);
     drawCube();
-    // gl.useProgram(program2);
-    // gl.useProgram(program1);
+    gl.useProgram(program2);
+    
+    gl.uniform3fv(thetaLoc2, theta);
+    drawCube();
     requestAnimationFrame(render);
 }
 function drawCube() {
